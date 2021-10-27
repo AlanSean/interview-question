@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "declaration": true,
+    "lib": ["es2017"],
+    "module": "esnext",
+    "target": "esnext",
+    "skipLibCheck": true,
+    "sourceMap": false,
+    "strict": true,
+    "alwaysStrict": true,
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "typeRoots": ["node_modules/@types"],
+    "esModuleInterop": true
+  },
+  "exclude": ["node_modules"]
+}
