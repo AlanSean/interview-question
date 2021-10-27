@@ -1,1 +1,1 @@
-import './realize/map';
+import './realize/index';
