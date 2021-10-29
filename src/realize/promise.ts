@@ -1,42 +1,138 @@
-type callbackFn = (relove: Promise1['relove'], reject: Promise1['reject']) => void;
+type OnFulflled<T, R> = ((v: T) => R | PromiseLike1<R>) | null | undefined;
+type onRejected<T> = ((reason: any) => T | PromiseLike1<T>) | null | undefined;
 
-export class Promise1<T = any> {
-  private thenCb: ((res: T) => T) | undefined = undefined;
-  private rejectCb: ((res: any) => void) | undefined = undefined;
-  private relove(res: T): T | undefined {
-    return this.thenCb && this.thenCb(res);
-  }
-  private reject(res: any) {
-    this.rejectCb && this.rejectCb(res);
-  }
-  constructor(cb: callbackFn) {
-    try {
-      cb.call(this, this.relove.bind(this), this.reject.bind(this));
-    } catch (error) {
-      this.reject(error);
-    }
-  }
-  then(thenCb: (res: T) => T) {
-    this.thenCb = thenCb;
-    return this;
-  }
-  catch(rejectCb: (res: any) => void) {
-    this.rejectCb = rejectCb;
-  }
+interface ZeroFunction {
+  (): void;
+}
+interface UnaryFunction<T, R> {
+  (x0: T): R;
 }
 
-new Promise1((relove, reject) => {
-  try {
-    setTimeout(() => {
-      relove(1);
-    }, 1000);
-  } catch (error) {
-    reject(error);
+interface Executor<T> {
+  (resolve: UnaryFunction<T | PromiseLike1<T>, void>, reject: UnaryFunction<any, void>): void;
+}
+enum State {
+  PENDING = 'pending',
+  FULFILLED = 'fulfilled',
+  REJECTED = 'rejected'
+}
+interface PromiseLike1<T> {
+  then<fullResult = T, catchResult = never>(
+    onFulfilled?: OnFulflled<T, fullResult>,
+    onRejected?: onRejected<catchResult>
+  ): Promise1<fullResult | catchResult>;
+}
+class Promise1<T> {
+  private state: State = State.FULFILLED;
+  private onFulfilledFn: ZeroFunction[] = [];
+  private onRejectedFn: ZeroFunction[] = [];
+  private value: T | undefined = undefined;
+  private reason: any | undefined = undefined;
+
+  private of<R>(promise: Promise1<R>, v: R | PromiseLike1<R>, resolve: (value: R) => void, reject: (reason?: any) => void) {
+    if (promise === v) {
+      return;
+    }
+    if (v && (typeof v === 'object' || typeof v === 'function')) {
+      // const then = v.constructor && v.then;
+      resolve;
+      reject;
+    }
   }
-})
-  .then(res => {
-    console.log(res);
-  })
-  .catch(err => {
-    console.log(err);
-  });
+
+  constructor(executor?: Executor<T>) {
+    if (typeof executor === 'function') {
+      let called = false;
+
+      const onResolve = (res: T | PromiseLike1<T>) => {
+        if (called) return;
+        called = true;
+        // this.onResolve(res);
+        this.of(this, res, this.onResolve.bind(this), this.onResolve.bind(this));
+      };
+
+      const onReject = (reason: any) => {
+        if (called) return;
+        called = true;
+        this.onReject(reason);
+      };
+
+      this.state = State.PENDING;
+
+      try {
+        executor(onResolve, onReject);
+      } catch (error) {
+        onReject(error);
+      }
+    }
+  }
+  private onResolve(res: T) {
+    if (this.state === State.PENDING) return;
+
+    this.state = State.FULFILLED;
+    this.value = res;
+    this.onFulfilledFn.forEach(fn => fn());
+  }
+
+  private onReject(reason: any) {
+    if (this.state === State.PENDING) return;
+
+    this.state = State.REJECTED;
+    this.reason = reason;
+    this.onRejectedFn.forEach(fn => fn());
+  }
+
+  public then<fullResult = T, catchResult = never>(
+    onFulfilled?: OnFulflled<T, fullResult>,
+    onRejected?: onRejected<catchResult>
+  ): Promise1<fullResult | catchResult> {
+    const promise = new Promise1<fullResult | catchResult>((resolve, reject) => {
+      const resHandler = () => {
+        const _onFulfilled = typeof onFulfilled === 'function' ? onFulfilled : (v: T) => v;
+        setTimeout(() => {
+          try {
+            _onFulfilled;
+            // const v = _onFulfilled(this.value);
+            // this.of<fullResult | catchResult>(promise, v, resolve, reject);
+          } catch (error) {
+            reject(error);
+          }
+        });
+      };
+      const rejHandler = () => {
+        const _onRejected = typeof onRejected === 'function' ? onRejected : (v: T) => v;
+        setTimeout(() => {
+          try {
+            _onRejected;
+            // const v = _onRejected(this.value);
+            // this.of<fullResult | catchResult>(promise, v, resolve, reject);
+          } catch (error) {
+            reject(error);
+          }
+        });
+      };
+      if (this.state === State.FULFILLED) resHandler();
+      if (this.state === State.REJECTED) rejHandler();
+      if (this.state === State.PENDING) {
+        this.onFulfilledFn.push(resHandler);
+        this.onRejectedFn.push(rejHandler);
+      }
+    });
+    return promise;
+  }
+  catch<catchResult>(onRejected: onRejected<catchResult>): Promise1<T | catchResult> {
+    return this.then(null, onRejected);
+  }
+  // finally(onFinally?: (() => void) | null): Promise1<T>;
+}
+
+// new Promise1<number>((resolve) => {
+//   resolve(1);
+// })
+//   .then((a) => {
+//     console.log(a);
+//     return new Promise1();
+//   })
+//   .then((a) => {
+//     console.log(a);
+//   });
