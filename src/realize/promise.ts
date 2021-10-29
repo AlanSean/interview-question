@@ -11,16 +11,42 @@ interface UnaryFunction<T, R> {
 interface Executor<T> {
   (resolve: UnaryFunction<T | PromiseLike1<T>, void>, reject: UnaryFunction<any, void>): void;
 }
-enum State {
-  PENDING = 'pending',
-  FULFILLED = 'fulfilled',
-  REJECTED = 'rejected'
-}
+
 interface PromiseLike1<T> {
   then<fullResult = T, catchResult = never>(
     onFulfilled?: OnFulflled<T, fullResult>,
     onRejected?: onRejected<catchResult>
   ): Promise1<fullResult | catchResult>;
+}
+
+function resovePromise<T>(promise2: Promise1<T>, v: T | PromiseLike1<T>, resolve: (value: T) => void, reject: (reason?: any) => void) {
+  if (promise2 === v) {
+    return;
+  }
+  if (v != null && (typeof v === 'object' || typeof v === 'function') && 'then' in v) {
+    // const then = v.constructor && v.then;
+    try {
+      v.then.call(
+        v,
+        y => {
+          resovePromise(promise2, y, resolve, reject);
+        },
+        r => {
+          reject(r);
+        }
+      );
+    } catch (error) {
+      reject(error);
+    }
+  } else {
+    resolve(v);
+  }
+}
+
+enum State {
+  PENDING = 'pending',
+  FULFILLED = 'fulfilled',
+  REJECTED = 'rejected'
 }
 class Promise1<T> {
   private state: State = State.FULFILLED;
@@ -29,26 +55,14 @@ class Promise1<T> {
   private value: T | undefined = undefined;
   private reason: any | undefined = undefined;
 
-  private of<R>(promise: Promise1<R>, v: R | PromiseLike1<R>, resolve: (value: R) => void, reject: (reason?: any) => void) {
-    if (promise === v) {
-      return;
-    }
-    if (v && (typeof v === 'object' || typeof v === 'function')) {
-      // const then = v.constructor && v.then;
-      resolve;
-      reject;
-    }
-  }
-
-  constructor(executor?: Executor<T>) {
+  constructor(executor: Executor<T>) {
     if (typeof executor === 'function') {
       let called = false;
 
-      const onResolve = (res: T | PromiseLike1<T>) => {
+      const onResolve = (x: T | PromiseLike1<T>) => {
         if (called) return;
         called = true;
-        // this.onResolve(res);
-        this.of(this, res, this.onResolve.bind(this), this.onResolve.bind(this));
+        resovePromise(this, x, this.onResolve.bind(this), this.onResolve.bind(this));
       };
 
       const onReject = (reason: any) => {
@@ -86,26 +100,29 @@ class Promise1<T> {
     onFulfilled?: OnFulflled<T, fullResult>,
     onRejected?: onRejected<catchResult>
   ): Promise1<fullResult | catchResult> {
-    const promise = new Promise1<fullResult | catchResult>((resolve, reject) => {
+    const promise2 = new Promise1<fullResult | catchResult>((resolve, reject) => {
       const resHandler = () => {
         const _onFulfilled = typeof onFulfilled === 'function' ? onFulfilled : (v: T) => v;
         setTimeout(() => {
           try {
-            _onFulfilled;
-            // const v = _onFulfilled(this.value);
-            // this.of<fullResult | catchResult>(promise, v, resolve, reject);
+            const v = _onFulfilled(this.value);
+            resovePromise(promise2, v, resolve, reject);
           } catch (error) {
             reject(error);
           }
         });
       };
       const rejHandler = () => {
-        const _onRejected = typeof onRejected === 'function' ? onRejected : (v: T) => v;
+        const _onRejected =
+          typeof onRejected === 'function'
+            ? onRejected
+            : (reason: any) => {
+                throw reason;
+              };
         setTimeout(() => {
           try {
-            _onRejected;
-            // const v = _onRejected(this.value);
-            // this.of<fullResult | catchResult>(promise, v, resolve, reject);
+            const v = _onRejected(this.reason);
+            resovePromise(promise2, v, resolve, reject);
           } catch (error) {
             reject(error);
           }
@@ -118,7 +135,7 @@ class Promise1<T> {
         this.onRejectedFn.push(rejHandler);
       }
     });
-    return promise;
+    return promise2;
   }
   catch<catchResult>(onRejected: onRejected<catchResult>): Promise1<T | catchResult> {
     return this.then(null, onRejected);
@@ -126,13 +143,12 @@ class Promise1<T> {
   // finally(onFinally?: (() => void) | null): Promise1<T>;
 }
 
-// new Promise1<number>((resolve) => {
-//   resolve(1);
-// })
-//   .then((a) => {
-//     console.log(a);
-//     return new Promise1();
-//   })
-//   .then((a) => {
-//     console.log(a);
-//   });
+new Promise1<number>(resolve => {
+  resolve(1);
+})
+  .then(a => {
+    console.log(a);
+  })
+  .then(a => {
+    console.log(a);
+  });
