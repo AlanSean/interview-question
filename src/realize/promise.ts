@@ -102,7 +102,7 @@ class Promise1<T> {
   ): Promise1<fullResult | catchResult> {
     const promise2 = new Promise1<fullResult | catchResult>((resolve, reject) => {
       const resHandler = () => {
-        const _onFulfilled = typeof onFulfilled === 'function' ? onFulfilled : (v: T) => v;
+        const _onFulfilled = typeof onFulfilled === 'function' ? onFulfilled : (v: fullResult | catchResult) => v;
         setTimeout(() => {
           try {
             const v = _onFulfilled(this.value);
