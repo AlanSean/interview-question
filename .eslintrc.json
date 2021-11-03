@@ -19,22 +19,22 @@
   ],
   "plugins": ["eslint-plugin-import", "@typescript-eslint"],
   "rules": {
-    "@typescript-eslint/indent": [
-      "error",
-      2,
-      {
-        "SwitchCase": 1,
-        "CallExpression": {
-          "arguments": "first"
-        },
-        "FunctionExpression": {
-          "parameters": "first"
-        },
-        "FunctionDeclaration": {
-          "parameters": "first"
-        }
-      }
-    ],
+    // "@typescript-eslint/indent": [
+    //   "error",
+    //   2,
+    //   {
+    //     "SwitchCase": 1,
+    //     "CallExpression": {
+    //       "arguments": "first"
+    //     },
+    //     "FunctionExpression": {
+    //       "parameters": "first"
+    //     },
+    //     "FunctionDeclaration": {
+    //       "parameters": "first"
+    //     }
+    //   }
+    // ],
     "@typescript-eslint/no-misused-promises": 0,
     "@typescript-eslint/explicit-module-boundary-types": 0,
     "@typescript-eslint/no-empty-function": 0,

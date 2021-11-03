@@ -48,7 +48,7 @@ enum State {
   FULFILLED = 'fulfilled',
   REJECTED = 'rejected'
 }
-class Promise1<T> {
+export class Promise1<T> {
   private state: State = State.PENDING;
   private onFulfilledFn: ZeroFunction[] = [];
   private onRejectedFn: ZeroFunction[] = [];
@@ -205,16 +205,3 @@ class Promise1<T> {
     });
   }
 }
-
-const a = new Promise1(resolve => {
-  resolve(111);
-});
-const b = new Promise1(resolve => {
-  resolve(2);
-});
-const c = new Promise1(resolve => {
-  resolve(2);
-});
-Promise1.all([a, b, c]).then(res => {
-  console.log(res);
-});
