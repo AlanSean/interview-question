@@ -1,5 +1,5 @@
-type OnFulflled<T, R> = ((v: T) => R | PromiseLike1<R>) | null | undefined;
-type onRejected<T> = ((reason: any) => T | PromiseLike1<T>) | null | undefined;
+type OnFulflled<T, fullResult> = ((v: T) => fullResult | PromiseLike1<fullResult>) | null | undefined;
+type onRejected<catchResult> = ((reason: any) => catchResult | PromiseLike1<catchResult>) | null | undefined;
 
 interface ZeroFunction {
   (): void;
@@ -49,11 +49,11 @@ enum State {
   REJECTED = 'rejected'
 }
 class Promise1<T> {
-  private state: State = State.FULFILLED;
+  private state: State = State.PENDING;
   private onFulfilledFn: ZeroFunction[] = [];
   private onRejectedFn: ZeroFunction[] = [];
-  private value: T | undefined = undefined;
-  private reason: any | undefined = undefined;
+  private value!: T;
+  private reason: any = undefined;
 
   constructor(executor: Executor<T>) {
     if (typeof executor === 'function') {
@@ -81,32 +81,32 @@ class Promise1<T> {
     }
   }
   private onResolve(res: T) {
-    if (this.state === State.PENDING) return;
-
+    if (this.state !== State.PENDING) return;
     this.state = State.FULFILLED;
     this.value = res;
     this.onFulfilledFn.forEach(fn => fn());
   }
 
   private onReject(reason: any) {
-    if (this.state === State.PENDING) return;
+    if (this.state !== State.PENDING) return;
 
     this.state = State.REJECTED;
     this.reason = reason;
     this.onRejectedFn.forEach(fn => fn());
   }
-
   public then<fullResult = T, catchResult = never>(
     onFulfilled?: OnFulflled<T, fullResult>,
     onRejected?: onRejected<catchResult>
   ): Promise1<fullResult | catchResult> {
     const promise2 = new Promise1<fullResult | catchResult>((resolve, reject) => {
       const resHandler = () => {
-        const _onFulfilled = typeof onFulfilled === 'function' ? onFulfilled : (v: fullResult | catchResult) => v;
+        const _onFulfilled = typeof onFulfilled === 'function' ? onFulfilled : (v: T) => v;
+
         setTimeout(() => {
           try {
-            const v = _onFulfilled(this.value);
-            resovePromise(promise2, v, resolve, reject);
+            const v = _onFulfilled(this.value) as fullResult | catchResult;
+
+            resovePromise<fullResult | catchResult>(promise2, v, resolve, reject);
           } catch (error) {
             reject(error);
           }
@@ -119,6 +119,7 @@ class Promise1<T> {
             : (reason: any) => {
                 throw reason;
               };
+
         setTimeout(() => {
           try {
             const v = _onRejected(this.reason);
@@ -137,18 +138,83 @@ class Promise1<T> {
     });
     return promise2;
   }
-  catch<catchResult>(onRejected: onRejected<catchResult>): Promise1<T | catchResult> {
+
+  catch<catchResult>(onRejected?: onRejected<catchResult>): Promise1<T | catchResult> {
     return this.then(null, onRejected);
   }
-  // finally(onFinally?: (() => void) | null): Promise1<T>;
+
+  finally(onFinally?: (() => void) | null): Promise1<T> {
+    const _onFinally = typeof onFinally === 'function' ? onFinally : () => {};
+    return this.then(
+      v => Promise1.resolve(_onFinally()).then(() => v),
+      reason => Promise1.resolve(_onFinally()).then(() => reason)
+    );
+  }
+
+  static resolve(): Promise1<void>;
+  static resolve<T>(v: T | PromiseLike1<T>): Promise1<T>;
+  static resolve<T>(v?: T | PromiseLike1<T>): Promise1<T | void> {
+    if (v instanceof Promise1) return v;
+    if (v === undefined) {
+      return new Promise1(reslove => {
+        reslove(undefined);
+      });
+    } else {
+      return new Promise1(reslove => reslove(v));
+    }
+  }
+
+  static reject<T = never>(reason?: any): Promise1<T> {
+    return new Promise1<T>((_, reject) => reject(reason));
+  }
+
+  static race<T>(list: readonly T[]): Promise1<T> {
+    return new Promise1<T>((resolve, reject) => {
+      for (const p of list) {
+        if (typeof p === 'object' && 'then' in p) {
+          this.resolve(p).then(
+            v => {
+              resolve(v);
+            },
+            reason => {
+              reject(reason);
+            }
+          );
+        }
+      }
+    });
+  }
+
+  static all<T>(list: readonly (T | PromiseLike1<T>)[]): Promise1<T[]> {
+    return new Promise1<T[]>((resolve, reject) => {
+      const values: T[] = [];
+
+      for (const p of list) {
+        if (typeof p === 'object' && 'then' in p) {
+          this.resolve(p).then(
+            v => {
+              values[values.length] = v;
+              if (values.length === list.length) resolve(values);
+            },
+            reason => {
+              reject(reason);
+            }
+          );
+        }
+      }
+    });
+  }
 }
 
-new Promise1<number>(resolve => {
-  resolve(1);
-})
-  .then(a => {
-    console.log(a);
-  })
-  .then(a => {
-    console.log(a);
-  });
+const a = new Promise1(resolve => {
+  resolve(111);
+});
+const b = new Promise1(resolve => {
+  resolve(2);
+});
+const c = new Promise1(resolve => {
+  resolve(2);
+});
+Promise1.all([a, b, c]).then(res => {
+  console.log(res);
+});
