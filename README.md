@@ -3,4 +3,4 @@ interview-question
 
 # 实现
 
-## [1.使用reduce实现map函数]()
+## [1.使用reduce实现map函数]() 

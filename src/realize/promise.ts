@@ -62,7 +62,7 @@ export class Promise1<T> {
       const onResolve = (x: T | PromiseLike1<T>) => {
         if (called) return;
         called = true;
-        resovePromise(this, x, this.onResolve.bind(this), this.onResolve.bind(this));
+        resovePromise(this, x, this.onResolve.bind(this), this.onReject.bind(this));
       };
 
       const onReject = (reason: any) => {
@@ -205,3 +205,24 @@ export class Promise1<T> {
     });
   }
 }
+
+// async function async1() {
+//   console.log('A');
+//   await async2();
+//   console.log('B');
+// }
+// async function async2() {
+//   console.log('C');
+// }
+// console.log('D');
+// setTimeout(function() {
+//   console.log('E');
+// });
+// async1();
+// new Promise(function(resolve) {
+//   console.log('F');
+//   resolve(1);
+// }).then(function() {
+//   console.log('G');
+// });
+// console.log('H');
